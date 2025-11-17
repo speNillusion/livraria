@@ -111,13 +111,12 @@ public class BuscadorLivros {
                 conteudo = conteudo.substring(7, conteudo.length() - 3).trim();
             }
 
-            System.out.println("Conteúdo extraído para parsear: " + conteudo);
             LivrosContainer container = gson.fromJson(conteudo, LivrosContainer.class);
             return container != null ? container.livros : Collections.emptyList();
         } catch (Exception e) {
             System.err.println("Erro ao fazer o parse do JSON com Gson: " + e.getMessage());
-            e.printStackTrace();
             return Collections.emptyList();
+
         }
     }
 
@@ -134,7 +133,7 @@ public class BuscadorLivros {
         Boolean clientConnect = client.connect();
 
         try {
-            List<Livro> livros = buscador.buscarLivros("cadastre todos os livros do autor Machado de Assis");
+            List<Livro> livros = buscador.buscarLivros("cadastre todos os livros do autor Jorge Amado");
 
             if (livros.isEmpty() && !clientConnect) {
                 System.out.println("Nenhum livro foi processado.");

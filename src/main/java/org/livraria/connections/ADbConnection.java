@@ -4,6 +4,8 @@ import org.livraria.interfaces.IDbConnection;
 import org.livraria.types.Livro;
 import java.sql.*;
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Abstract base class for database connections.
@@ -71,32 +73,91 @@ public abstract class ADbConnection implements IDbConnection {
             return false;
         }
 
-
-        String selectSQL = String.format("SELECT id, nome, email FROM %s", table);
+        String selectSQL = String.format("SELECT * FROM %s", table);
 
         System.out.println("Executando busca de dados na tabela: " + table);
 
-        // 3. Usar try-with-resources para PreparedStatement e ResultSet
         try (PreparedStatement preparedStatement = this.connection.prepareStatement(selectSQL);
              ResultSet resultSet = preparedStatement.executeQuery()) {
 
-            System.out.println("--- Resultados da Tabela: " + table + " ---");
-            boolean foundResults = false;
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            int columnCount = metaData.getColumnCount();
 
-            // 5. Iterar sobre o ResultSet
-            while (resultSet.next()) {
-                foundResults = true;
-                // 6. Extrair os dados de cada coluna para a linha atual
-                int id = resultSet.getInt("id");
-                String nome = resultSet.getString("nome");
-                String email = resultSet.getString("email");
+            // Armazenar os nomes das colunas e as larguras máximas
+            String[] columnNames = new String[columnCount];
+            int[] columnWidths = new int[columnCount];
 
-                // 7. Exibir os dados formatados
-                System.out.printf("ID: %-5d | Nome: %-20s | Email: %s\n", id, nome, email);
+            // Lista para armazenar todas as linhas de dados
+            List<String[]> dataRows = new ArrayList<>();
+
+            // 1. Primeira Passagem: Coletar dados e calcular a largura máxima de cada coluna
+            for (int i = 0; i < columnCount; i++) {
+                columnNames[i] = metaData.getColumnName(i + 1);
+                // Inicializa a largura com o tamanho do nome da coluna
+                columnWidths[i] = columnNames[i].length();
             }
 
-            if (!foundResults) {
+            while (resultSet.next()) {
+                String[] row = new String[columnCount];
+                for (int i = 0; i < columnCount; i++) {
+                    // Obtém o valor como String (seguro para todos os tipos)
+                    String value = resultSet.getString(i + 1);
+                    if (value == null) {
+                        value = "NULL"; // Trata valores nulos
+                    }
+                    row[i] = value;
+
+                    // Atualiza a largura máxima da coluna
+                    columnWidths[i] = Math.max(columnWidths[i], value.length());
+                }
+                dataRows.add(row);
+            }
+
+            if (dataRows.isEmpty()) {
+                System.out.println("--- Resultados da Tabela: " + table + " ---");
                 System.out.println("Nenhum registro encontrado na tabela.");
+                System.out.println("----------------------------------------");
+                return true;
+            }
+
+            // 2. Segunda Passagem: Exibir a tabela formatada
+
+            System.out.println("--- Resultados da Tabela: " + table + " ---");
+
+            // Função auxiliar para formatar a string com preenchimento
+            java.util.function.BiFunction<String, Integer, String> padRight = (s, n) ->
+                    String.format("%-" + n + "s", s);
+
+            // Exibir Cabeçalho
+            StringBuilder headerBuilder = new StringBuilder();
+            for (int i = 0; i < columnCount; i++) {
+                headerBuilder.append(padRight.apply(columnNames[i], columnWidths[i]));
+                if (i < columnCount - 1) {
+                    headerBuilder.append(" | ");
+                }
+            }
+            System.out.println(headerBuilder.toString());
+
+            // Exibir Linha Separadora
+            StringBuilder separatorBuilder = new StringBuilder();
+            for (int i = 0; i < columnCount; i++) {
+                separatorBuilder.append("-".repeat(columnWidths[i]));
+                if (i < columnCount - 1) {
+                    separatorBuilder.append("-+-");
+                }
+            }
+            System.out.println(separatorBuilder.toString());
+
+            // Exibir Dados
+            for (String[] row : dataRows) {
+                StringBuilder rowBuilder = new StringBuilder();
+                for (int i = 0; i < columnCount; i++) {
+                    rowBuilder.append(padRight.apply(row[i], columnWidths[i]));
+                    if (i < columnCount - 1) {
+                        rowBuilder.append(" | ");
+                    }
+                }
+                System.out.println(rowBuilder.toString());
             }
 
             System.out.println("----------------------------------------");
@@ -107,10 +168,10 @@ public abstract class ADbConnection implements IDbConnection {
             System.err.println("SQLState: " + e.getSQLState());
             System.err.println("Error Code: " + e.getErrorCode());
             System.err.println("Message: " + e.getMessage());
-            e.notifyAll(); // Importante para depuração
             return false;
         }
     }
+
 
 
     /**
