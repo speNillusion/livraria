@@ -17,7 +17,13 @@ import java.util.List;
  * Implementação de um buscador de livros que utiliza a API do Groq
  * com o modelo 'compound' para obter dados atualizados via busca na web.
  */
-public class BuscadorLivros {
+public class BuscadorLivros extends ABuscadorLivros {
+    // --- Classes auxiliares para o parsing do JSON com Gson ---
+    private static class GroqResponse { List<Choice> choices; }
+    private static class Choice { Message message; }
+    private static class Message { String content; }
+    private static class LivrosContainer { List<Livro> livros; }
+
     public static final Dotenv dotenv = Dotenv.load( );
     private static final String URL_JDBC = dotenv.get("URL_JDBC");
     private static final String USER_JDBC = dotenv.get("USER_JDBC");
@@ -28,6 +34,12 @@ public class BuscadorLivros {
 
     private static final Gson gson = new Gson( );
 
+    @Override
+    protected String obterDadosBrutos(String consulta) throws Exception {
+        return "";
+    }
+
+    @Override
     public List<Livro> buscarLivros(String consulta) throws Exception {
         System.out.println("Enviando prompt para a IA (Groq) com busca na web...");
 
@@ -97,14 +109,15 @@ public class BuscadorLivros {
         return parsearRespostaComGson(respostaJson);
     }
 
-    private List<Livro> parsearRespostaComGson(String respostaJson) {
+    @Override
+    public List<Livro> parsearRespostaComGson(String respostaJson) {
         try {
             GroqResponse apiResponse = gson.fromJson(respostaJson, GroqResponse.class);
             if (apiResponse == null || apiResponse.choices == null || apiResponse.choices.isEmpty()) {
                 System.err.println("Resposta da API Groq vazia ou em formato inesperado.");
                 return Collections.emptyList();
             }
-            String conteudo = apiResponse.choices.get(0).message.content;
+            String conteudo = apiResponse.choices.getFirst().message.content;
 
             // Limpa o bloco de código markdown, se houver
             if (conteudo != null && conteudo.startsWith("```json")) {
@@ -119,12 +132,6 @@ public class BuscadorLivros {
 
         }
     }
-
-    // --- Classes auxiliares para o parsing do JSON com Gson ---
-    private static class GroqResponse { List<Choice> choices; }
-    private static class Choice { Message message; }
-    private static class Message { String content; }
-    private static class LivrosContainer { List<Livro> livros; }
 
     public static void main(String[] args) {
 

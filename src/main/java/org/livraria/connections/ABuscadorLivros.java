@@ -23,56 +23,8 @@ public abstract class ABuscadorLivros implements IBuscadorLivros {
      */
     protected abstract String obterDadosBrutos(String consulta) throws Exception;
 
-    @Override
-    public List<Livro> buscarLivros(String consulta) throws Exception {
-        String dadosBrutos = obterDadosBrutos(consulta);
+    public abstract List<Livro> buscarLivros(String consulta) throws Exception;
 
-        if (dadosBrutos == null || dadosBrutos.trim().isEmpty()) {
-            System.err.println("Nenhum dado bruto foi retornado pela fonte.");
-            return new ArrayList<>();
-        }
-
-        return parseConteudoDosLivros(dadosBrutos);
-    }
-
-    /**
-     * Método concreto e compartilhado para analisar a string de dados e convertê-la em objetos Livro.
-     */
-    private List<Livro> parseConteudoDosLivros(String conteudo) {
-        List<Livro> livros = new ArrayList<>();
-
-        // Remove as chaves de abertura e fechamento e divide por "},{" para separar os livros
-        String[] livrosStr = conteudo.replaceFirst("^\\{", "").replaceFirst("\\}$", "").split("\\},\\s*\\{");
-
-        for (String livroData : livrosStr) {
-            try {
-                // Limita a 9 partes para evitar que vírgulas na sinopse quebrem o parse
-                String[] campos = livroData.split(",", 9);
-                if (campos.length < 9) {
-                    System.err.println("AVISO: Ignorando linha mal formatada (campos insuficientes): " + livroData);
-                    continue;
-                }
-
-                livros.add(new Livro(
-                        campos[0].trim(), // titulo
-                        campos[1].trim(), // autor
-                        campos[2].trim(), // genero
-                        campos[3].trim(), // sinopse
-                        Integer.parseInt(campos[4].trim()), // anoPublicacao
-                        campos[5].trim(), // editora
-                        campos[6].trim(), // origem
-                        Integer.parseInt(campos[7].trim()), // numeroPaginas
-                        campos[8].trim()  // isbn
-                ));
-
-            } catch (NumberFormatException e) {
-                System.err.println("Erro ao converter número em: " + livroData + ". Livro ignorado.");
-            } catch (Exception e) {
-                System.err.println("Erro inesperado ao processar dados do livro: " + livroData + ". Livro ignorado.");
-                e.printStackTrace();
-            }
-        }
-        return livros;
-    }
+    protected abstract List<Livro> parsearRespostaComGson(String respostaJson) throws Exception;
 }
 
